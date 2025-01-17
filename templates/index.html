@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Detection in Financial Transactions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e4d92 0%, #1e4d92 100%);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .user-info {
+            float: right;
+            margin-top: -30px;
+            color: white;
+        }
+
+        .user-info a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+
+        .user-info a:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 20px;
+        }
+
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .left-section, .right-section {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            border-color: #1e4d92;
+            outline: none;
+            box-shadow: 0 0 5px rgba(30,77,146,0.2);
+        }
+
+        .detect-btn {
+            background: #1e4d92;
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1.1rem;
+            transition: background-color 0.3s;
+        }
+
+        .detect-btn:hover {
+            background: #153a6f;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e4d92;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-card {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: white;
+        }
+
+        .high-risk {
+            background-color: #ffe6e6;
+            border: 1px solid #ffcccc;
+        }
+
+        .low-risk {
+            background-color: #e6ffe6;
+            border: 1px solid #ccffcc;
+        }
+
+        .error-message {
+            background-color: #ffe6e6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #ffcccc;
+        }
+
+        .risk-level {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .indicators {
+            margin: 15px 0;
+        }
+
+        .indicators ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .indicators li {
+            margin: 5px 0;
+            padding: 5px 10px;
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 4px;
+        }
+
+        .timestamp {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Fraud Detection in Financial Transactions</h1>
+        <div class="user-info">
+            Welcome, {{ username }} | <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <form id="fraudDetectionForm">
+            <div class="form-row">
+                <div class="left-section">
+                    <div class="input-group">
+                        <label>Transaction ID</label>
+                        <input type="text" name="transaction_id" placeholder="Enter Transaction ID" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>User ID</label>
+                        <input type="text" name="user_id" placeholder="Enter User ID" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Transaction Date & Time</label>
+                        <input type="datetime-local" name="transactionDate" 
+                               max="{{ now.strftime('%Y-%m-%dT%H:%M') }}" required>
+                    </div>
+                </div>
+
+                <div class="right-section">
+                    <div class="input-group">
+                        <label>Transaction Amount (₹)</label>
+                        <input type="number" name="amount" placeholder="Enter amount" 
+                               required min="1" step="0.01">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Merchant Category</label>
+                        <select name="merchantCategory" required>
+                            <option value="">Select category</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Food">Food</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Bills">Bills</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Education">Education</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Fashion">Fashion</option>
+                            <option value="Others">Others</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>State</label>
+                        <select name="location" required>
+                            <option value="">Select your state</option>
+                            <option value="Andhra Pradesh">Andhra Pradesh</option>
+                            <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                            <option value="Assam">Assam</option>
+                            <option value="Bihar">Bihar</option>
+                            <option value="Chhattisgarh">Chhattisgarh</option>
+                            <option value="Goa">Goa</option>
+                            <option value="Gujarat">Gujarat</option>
+                            <option value="Haryana">Haryana</option>
+                            <option value="Himachal Pradesh">Himachal Pradesh</option>
+                            <option value="Jharkhand">Jharkhand</option>
+                            <option value="Karnataka">Karnataka</option>
+                            <option value="Kerala">Kerala</option>
+                            <option value="Madhya Pradesh">Madhya Pradesh</option>
+                            <option value="Maharashtra">Maharashtra</option>
+                            <option value="Manipur">Manipur</option>
+                            <option value="Meghalaya">Meghalaya</option>
+                            <option value="Mizoram">Mizoram</option>
+                            <option value="Nagaland">Nagaland</option>
+                            <option value="Odisha">Odisha</option>
+                            <option value="Punjab">Punjab</option>
+                            <option value="Rajasthan">Rajasthan</option>
+                            <option value="Sikkim">Sikkim</option>
+                            <option value="Tamil Nadu">Tamil Nadu</option>
+                            <option value="Telangana">Telangana</option>
+                            <option value="Tripura">Tripura</option>
+                            <option value="Uttar Pradesh">Uttar Pradesh</option>
+                            <option value="Uttarakhand">Uttarakhand</option>
+                            <option value="West Bengal">West Bengal</option>
+                            <option value="Delhi">Delhi</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="detect-btn">Analyze Transaction</button>
+        </form>
+
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>Analyzing transaction...</p>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('fraudDetectionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading spinner
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('result').innerHTML = '';
+            
+            try {
+                const formData = new FormData(this);
+                
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                // Create result HTML
+                let resultHTML = `
+                    <div class="result-card ${result.risk_level === 'High Risk' ? 'high-risk' : 'low-risk'}">
+                        <h3>Analysis Result</h3>
+                        <p class="risk-level">Risk Level: ${result.risk_level}</p>
+                        <p class="probability">Fraud Probability: ${(result.probability * 100).toFixed(2)}%</p>
+                        <p class="message">${result.message}</p>
+                        ${result.fraud_indicators.length > 0 ? `
+                            <div class="indicators">
+                                <h4>Fraud Indicators:</h4>
+                                <ul>
+                                    ${result.fraud_indicators.map(indicator => `<li>${indicator}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                        <p class="timestamp">Analysis Time: ${result.timestamp}</p>
+                    </div>
+                `;
+                
+                document.getElementById('result').innerHTML = resultHTML;
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="error-message">
+                        <h3>Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                // Hide loading spinner
+                document.querySelector('.loading').style.display = 'none';
+            }
+        });
+    </script>
+    <script>
+        document.getElementById('fraudDetectionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading spinner
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('result').innerHTML = '';
+            
+            try {
+                const formData = new FormData(this);
+                
+                // Log form data for debugging
+                for (let pair of formData.entries()) {
+                    console.log(pair[0] + ': ' + pair[1]);
+                }
+    
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                // Create result HTML
+                let resultHTML = `
+                    <div class="result-card ${result.risk_level === 'High Risk' ? 'high-risk' : 'low-risk'}">
+                        <h3>Analysis Result</h3>
+                        <p class="risk-level">Risk Level: ${result.risk_level}</p>
+                        <p class="probability">Fraud Probability: ${(result.probability * 100).toFixed(2)}%</p>
+                        <p class="message">${result.message}</p>
+                        ${result.fraud_indicators.length > 0 ? `
+                            <div class="indicators">
+                                <h4>Fraud Indicators:</h4>
+                                <ul>
+                                    ${result.fraud_indicators.map(indicator => `<li>${indicator}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                        <p class="timestamp">Analysis Time: ${result.timestamp}</p>
+                    </div>
+                `;
+                
+                document.getElementById('result').innerHTML = resultHTML;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `
+                    <div class="error-message">
+                        <h3>Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                // Hide loading spinner
+                document.querySelector('.loading').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
